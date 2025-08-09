@@ -1,6 +1,20 @@
 ARG PYTHON_VERSION=3.13
 
-FROM astral/uv:python${PYTHON_VERSION}-bookworm
+FROM astral/uv:python${PYTHON_VERSION}-bookworm AS builder
+
+WORKDIR /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-editable --compile-bytecode
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable --compile-bytecode
+
+FROM python:${PYTHON_VERSION}-slim-bookworm
 
 ARG UID
 ARG GID
@@ -8,7 +22,9 @@ ARG GID
 RUN groupadd -g ${GID} user && \
     useradd -m -s /bin/bash -u ${UID} -g ${GID} user
 
-USER user
-WORKDIR /user
+COPY --from=builder --chown=user:user /app/ /home/user/app/
 
-COPY . .
+USER user
+WORKDIR /home/user/app
+
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0"]
