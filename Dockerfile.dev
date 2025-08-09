@@ -1,0 +1,12 @@
+ARG PYTHON_VERSION=3.13
+
+FROM astral/uv:python${PYTHON_VERSION}-bookworm
+
+ARG UID
+ARG GID
+
+RUN groupadd -g ${GID} user && \
+    useradd -m -s /bin/bash -u ${UID} -g ${GID} user
+
+USER user
+WORKDIR /user
